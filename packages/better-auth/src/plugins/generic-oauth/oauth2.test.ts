@@ -354,6 +354,6 @@ describe("oauth2", async () => {
 			headers,
 			customFetchImpl,
 		);
-		expect(callbackURL).toBe("http://localhost:3000/dashboard");
+		expect(callbackURL).toBe("http://localhost:3000/new_user");
 	});
 });
