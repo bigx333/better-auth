@@ -378,7 +378,7 @@ export const appInvite = <O extends AppInviteOptions>(opts?: O) => {
 
 								name?: string;
 								email?: string;
-								password: string;
+								password?: string;
 							} & (O["$Infer"] extends {
 								AdditionalFields: Record<string, any>;
 							}
@@ -405,10 +405,11 @@ export const appInvite = <O extends AppInviteOptions>(opts?: O) => {
 												},
 												password: {
 													type: "string",
-													description: "The password of the user",
+													description:
+														"The password of the user (Only required if `createAccount` is true)",
 												},
 											},
-											required: ["password"],
+											required: options?.createAccount ? ["password"] : [],
 										},
 									},
 								},
