@@ -33,6 +33,12 @@ export interface AppInviteOptions {
 		| boolean
 		| ((user: User, type: "personal" | "public") => Promise<boolean> | boolean);
 	/**
+	 * Define whether an account should be created for the user after accepting the invitation.
+	 *
+	 * @default true
+	 */
+	createAccount?: boolean;
+	/**
 	 * Define whether a user is allowed to cancel invitations.
 	 *
 	 * By default users can only cancel invitations issued by themself.
@@ -497,32 +503,34 @@ export const appInvite = <O extends AppInviteOptions>(opts?: O) => {
 						}
 					}
 
-					const minPasswordLength =
-						ctx.context.password.config.minPasswordLength;
-					if (password.length < minPasswordLength) {
-						ctx.context.logger.error("Password is too short");
-						throw new APIError("BAD_REQUEST", {
-							message: BASE_ERROR_CODES.PASSWORD_TOO_SHORT,
-						});
-					}
+					if (options?.createAccount) {
+						const minPasswordLength =
+							ctx.context.password.config.minPasswordLength;
+						if (password.length < minPasswordLength) {
+							ctx.context.logger.error("Password is too short");
+							throw new APIError("BAD_REQUEST", {
+								message: BASE_ERROR_CODES.PASSWORD_TOO_SHORT,
+							});
+						}
 
-					const maxPasswordLength =
-						ctx.context.password.config.maxPasswordLength;
-					if (password.length > maxPasswordLength) {
-						ctx.context.logger.error("Password is too long");
-						throw new APIError("BAD_REQUEST", {
-							message: BASE_ERROR_CODES.PASSWORD_TOO_LONG,
-						});
-					}
-					const dbUser =
-						await ctx.context.internalAdapter.findUserByEmail(email);
-					if (dbUser?.user) {
-						ctx.context.logger.info(
-							`Sign-up attempt for existing email: ${email}`,
-						);
-						throw new APIError("UNPROCESSABLE_ENTITY", {
-							message: BASE_ERROR_CODES.USER_ALREADY_EXISTS,
-						});
+						const maxPasswordLength =
+							ctx.context.password.config.maxPasswordLength;
+						if (password.length > maxPasswordLength) {
+							ctx.context.logger.error("Password is too long");
+							throw new APIError("BAD_REQUEST", {
+								message: BASE_ERROR_CODES.PASSWORD_TOO_LONG,
+							});
+						}
+						const dbUser =
+							await ctx.context.internalAdapter.findUserByEmail(email);
+						if (dbUser?.user) {
+							ctx.context.logger.info(
+								`Sign-up attempt for existing email: ${email}`,
+							);
+							throw new APIError("UNPROCESSABLE_ENTITY", {
+								message: BASE_ERROR_CODES.USER_ALREADY_EXISTS,
+							});
+						}
 					}
 
 					const additionalData = parseUserInput(
@@ -561,13 +569,15 @@ export const appInvite = <O extends AppInviteOptions>(opts?: O) => {
 					/**
 					 * Link the account to the user
 					 */
-					const hash = await ctx.context.password.hash(password);
-					await ctx.context.internalAdapter.linkAccount({
-						userId: createdUser.id,
-						providerId: "credential",
-						accountId: createdUser.id,
-						password: hash,
-					});
+					if (options?.createAccount) {
+						const hash = await ctx.context.password.hash(password);
+						await ctx.context.internalAdapter.linkAccount({
+							userId: createdUser.id,
+							providerId: "credential",
+							accountId: createdUser.id,
+							password: hash,
+						});
+					}
 
 					let acceptedI: AppInvitation | null = invitation;
 					if (invitationType === "personal") {
